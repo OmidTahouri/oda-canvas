@@ -1,0 +1,23 @@
+apiVersion: oda.tmforum.org/v1beta3
+kind: ExposedAPI
+metadata:
+  name: product-catalog-api-demo
+  namespace: components
+spec:
+  name: ProductCatalog 
+  specification:
+    - "https://example.com/product-catalog-api-swagger.json"  
+  apiType: openapi 
+  implementation: product-catalog-service 
+  path: /productcatalog/v1
+  port: 8080
+  apiKeyVerification:
+    enabled: true
+    location: request.header.x-apikey 
+  rateLimit:
+    enabled: true
+    identifier: clientIP
+    limit: "10"
+    interval: "pm"
+  OASValidation:
+    requestEnabled: false 
