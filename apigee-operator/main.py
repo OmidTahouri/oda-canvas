@@ -1,5 +1,4 @@
 import kopf
-from google.oauth2 import service_account
 
 @kopf.on.create('oda.tmforum.org', 'v1beta3', 'exposedapis')
 def create_exposedapi_handler(body, spec, **kwargs):

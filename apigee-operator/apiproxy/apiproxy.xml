@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<APIProxy revision="1" name="apiproxy">
+  <DisplayName/>
+  <Description/>
+  <CreatedAt>1710758494523</CreatedAt>
+  <LastModifiedAt>1710758494523</LastModifiedAt>
+  <BasePaths>/apiproxy</BasePaths>
+  <ProxyEndpoints>
+    <ProxyEndpoint>default</ProxyEndpoint>
+  </ProxyEndpoints>
+  <TargetEndpoints>
+    <TargetEndpoint>default</TargetEndpoint>
+  </TargetEndpoints>
+</APIProxy>
