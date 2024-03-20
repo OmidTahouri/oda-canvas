@@ -1,22 +1,22 @@
 apiVersion: oda.tmforum.org/v1beta3
 kind: ExposedAPI
 metadata:
-  name: product-catalog-api-demo
+  name: product-catalog-v1
   namespace: components
 spec:
   name: ProductCatalog 
   specification:
-    - "https://example.com/product-catalog-api-swagger.json"  
+    - "https://specs.local/product-catalog-api-swagger.json"  
   apiType: openapi 
-  implementation: product-catalog-service 
+  implementation: https://mocktarget.apigee.net/echo
   path: /productcatalog/v1
   port: 8080
   apiKeyVerification:
     enabled: true
     location: request.header.x-apikey 
   rateLimit:
-    enabled: true
-    identifier: clientIP
+    enabled: false
+    identifier: proxy.client.ip
     limit: "10"
     interval: "pm"
   OASValidation:

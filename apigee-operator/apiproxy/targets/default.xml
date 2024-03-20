@@ -10,6 +10,6 @@
     <Response/>
   </PostFlow>
   <HTTPTargetConnection>
-    <URL>https://replace</URL>
+    <URL>https://mocktarget.apigee.net/echo</URL>
   </HTTPTargetConnection>
 </TargetEndpoint>
