@@ -1,7 +1,5 @@
-
 <SpikeArrest continueOnError="false" enabled="true" name="SpikeArrest.RateLimit">
-    <Identifier ref="proxy.client.ip" />
-    <Rate>10ps</Rate>
+    <Identifier ref="{{ identifier }}" />
+    <Rate>{{ limit }}{{interval}}</Rate>
     <UseEffectiveCount>true</UseEffectiveCount>
 </SpikeArrest>
-        

@@ -1,0 +1,3 @@
+<VerifyAPIKey continueOnError="false" enabled="true" name="VerifyAPIKey.Validate">
+    <APIKey ref="{{ location }}" />
+</VerifyAPIKey>
