@@ -196,6 +196,7 @@ class Apigee:
             api_rev = api_revs[-1]
             logger.warning(f"Proxy with name {api_name} with revision {api_rev} already exists in Apigee Org {self.org}")  # noqa
             if api_force_redeploy:
+                logger.warning(f"Forced deployment requested; proceeding with new revision of {api_name} in Apigee Org {self.org}")
                 api_exists = False
         if not api_exists:
             api_created, api_rev = self.create_api(api_name, proxy_bundle_path)
