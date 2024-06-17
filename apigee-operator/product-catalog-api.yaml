@@ -8,14 +8,14 @@ spec:
   specification:
     - "https://specs.local/product-catalog-api-swagger.json"  
   apiType: openapi 
-  implementation: https://mocktarget.apigee.net/echo
+  implementation: "https://mocktarget.apigee.net/echo"
   path: /productcatalog/v1
   port: 8080
   apiKeyVerification:
     enabled: true
     location: request.header.x-apikey 
   rateLimit:
-    enabled: false
+    enabled: true
     identifier: proxy.client.ip
     limit: "10"
     interval: "pm"

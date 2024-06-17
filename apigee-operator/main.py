@@ -8,10 +8,11 @@ import json, requests
 import zipfile
 from jinja2 import Environment, BaseLoader
 from google.oauth2 import service_account
+from utils.apiproxy_utils import create_proxy_metadata
 
 # TODO: abstract these top-level variables
 APIGEE_ORG = "caramel-medley"
-APIGEE_ENV = "test-env"
+APIGEE_ENV = "dev"
 
 BUNDLE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -40,42 +41,104 @@ def create_exposedapi_handler(body, spec, **kwargs):
 
         # delete {BUNDLE_PATH}/generated/{STAGING_DIR} after deployment
 
+
+    # extract core properties from CR
+    API_NAME = body['metadata']['name'] # or body['spec']['name']?
     UNIQUE_ID = body['metadata']['uid']
     RESOURCE_VERSION = body['metadata']['resourceVersion']
+    TARGET_URL = body['spec']['implementation']
+    BASE_PATH = body['spec']['path']
+
     STAGING_DIR = f"{UNIQUE_ID}-{RESOURCE_VERSION}"
 
     os.makedirs(f"{BUNDLE_PATH}/generated/{STAGING_DIR}/apiproxy/policies")
     os.makedirs(f"{BUNDLE_PATH}/generated/{STAGING_DIR}/apiproxy/proxies")
     os.makedirs(f"{BUNDLE_PATH}/generated/{STAGING_DIR}/apiproxy/targets")
 
-    # extract core properties from CR
-    API_NAME = body['metadata']['name']
-    API_BASE_PATH = body['spec']['path']
-    API_TARGET_URL = body['spec']['implementation']
+    create_proxy_metadata(API_NAME, STAGING_DIR, BUNDLE_PATH)
 
-    # TODO: abstract this to separate util file
-    SPIKEARREST_REQUIRED = body['spec']['rateLimit']['enabled']
+    # TODO: abstract the following logic to util file, like create_proxy_metadata()
 
-    if SPIKEARREST_REQUIRED == True:
+    # create spike arrest policy
+    SPIKE_ARREST_REQUIRED = body['spec']['rateLimit']['enabled']
+    SPIKE_ARREST_STEP = ""
+
+    if SPIKE_ARREST_REQUIRED == True:
         logger.info(f"Creating SpikeArrest policy for {API_NAME} ({STAGING_DIR})...")
 
-        SPIKEARREST_IDENTIFIER = body['spec']['rateLimit']['identifier']
-        SPIKEARREST_LIMIT = body['spec']['rateLimit']['limit']
-        SPIKEARREST_INTERVAL = body['spec']['rateLimit']['interval']
-        SPIKEARREST_RATE = f"{SPIKEARREST_LIMIT}{SPIKEARREST_RATE}"
+        SPIKE_ARREST_IDENTIFIER = body['spec']['rateLimit']['identifier']
+        SPIKE_ARREST_LIMIT = body['spec']['rateLimit']['limit']
+        SPIKE_ARREST_INTERVAL = body['spec']['rateLimit']['interval']
+        SPIKE_ARREST_RATE = f"{SPIKE_ARREST_LIMIT}{SPIKE_ARREST_INTERVAL}"
 
-        with open(f"{BUNDLE_PATH}/apiproxy/policies/SpikeArrest.RateLimit.xml",'w') as fl:
-            spikearrest_policy_template = fl.readlines()
+        with open(f"{BUNDLE_PATH}/apiproxy/policies/SpikeArrest.RateLimit.xml",'r') as fl:
+            spike_arrest_policy_template = fl.read()
 
-        rtemplate = Environment(loader=BaseLoader).from_string(spikearrest_policy_template)
-        spikearrest_policy = rtemplate.render({
-            "identifier": SPIKEARREST_IDENTIFIER,
-            "rate": SPIKEARREST_RATE
+        rtemplate = Environment(loader=BaseLoader).from_string(spike_arrest_policy_template)
+        spike_arrest_policy = rtemplate.render({
+            "identifier": SPIKE_ARREST_IDENTIFIER,
+            "rate": SPIKE_ARREST_RATE
         })
 
         with open(f"{BUNDLE_PATH}/generated/{STAGING_DIR}/apiproxy/policies/SpikeArrest.RateLimit.xml",'w') as fl:
-            fl.write(spikearrest_policy)
-    # end of abstraction
+            fl.write(spike_arrest_policy)
+        
+        SPIKE_ARREST_STEP = "<Step><Name>SpikeArrest.RateLimit</Name></Step>"
+    # end of spike arrest policy
+
+    # create verify api key policy
+    VERIFY_API_KEY_REQUIRED = body['spec']['apiKeyVerification']['enabled']
+    VERIFY_API_KEY_STEP = ""
+
+    if VERIFY_API_KEY_REQUIRED == True:
+        logger.info(f"Creating VerifyAPIKey policy for {API_NAME} ({STAGING_DIR})...")
+
+        API_KEY_LOCATION = body['spec']['apiKeyVerification']['location']
+
+        with open(f"{BUNDLE_PATH}/apiproxy/policies/VerifyAPIKey.Validate.xml",'r') as fl:
+            verify_api_key_policy_template = fl.read()
+
+        rtemplate = Environment(loader=BaseLoader).from_string(verify_api_key_policy_template)
+
+        verify_api_key_policy = rtemplate.render({
+            "location": API_KEY_LOCATION
+        })
+
+        with open(f"{BUNDLE_PATH}/generated/{STAGING_DIR}/apiproxy/policies/VerifyAPIKey.Validate.xml",'w') as fl:
+            fl.write(verify_api_key_policy)
+
+        VERIFY_API_KEY_STEP = "<Step><Name>VerifyAPIKey.Validate</Name></Step>"
+    # end of verify api key policy
+
+    # create proxy endpoint
+    with open(f"{BUNDLE_PATH}/apiproxy/proxies/default.xml",'r') as fl:
+        proxy_endpoint_template = fl.read()
+    
+    rtemplate = Environment(loader=BaseLoader).from_string(proxy_endpoint_template)
+
+    proxy_endpoint = rtemplate.render({
+        "base_path": BASE_PATH,
+        "spike_arrest_step": SPIKE_ARREST_STEP,
+        "verify_api_key_step": VERIFY_API_KEY_STEP 
+    })
+
+    with open(f"{BUNDLE_PATH}/generated/{STAGING_DIR}/apiproxy/proxies/default.xml",'w') as fl:
+        fl.write(proxy_endpoint)
+    # end of proxy endpoint
+
+    # create target endpoint
+    with open(f"{BUNDLE_PATH}/apiproxy/targets/default.xml",'r') as fl:
+        target_endpoint_template = fl.read()
+    
+    rtemplate = Environment(loader=BaseLoader).from_string(target_endpoint_template)
+
+    target_endpoint = rtemplate.render({
+        "target_url": TARGET_URL
+    })
+
+    with open(f"{BUNDLE_PATH}/generated/{STAGING_DIR}/apiproxy/targets/default.xml",'w') as fl:
+        fl.write(target_endpoint)
+    # end of target endpoint
 
     def zipdir(path, ziph):
         # ziph is zipfile handle
@@ -102,13 +165,13 @@ def create_exposedapi_handler(body, spec, **kwargs):
 
     logger.info(f"Creating proxy bundle zip for {API_NAME} ({STAGING_DIR})...")
 
-    create_proxy_bundle(f"{BUNDLE_PATH}/generated/{STAGING_DIR}", API_NAME, "apiproxy")
+    create_proxy_bundle(f"{BUNDLE_PATH}/generated/{STAGING_DIR}", API_NAME, f"{BUNDLE_PATH}/generated/{STAGING_DIR}/apiproxy")
 
     if not apigee.deploy_api_bundle(
         APIGEE_ENV,
         API_NAME,
-        f"{BUNDLE_PATH}/{API_NAME}.zip",
-        False
+        f"{BUNDLE_PATH}/generated/{STAGING_DIR}/{API_NAME}.zip",
+        True
     ):
         logger.error(f"Deployment failed for {API_NAME} ({STAGING_DIR})")
 

@@ -2,9 +2,8 @@
 <ProxyEndpoint name="default">
   <PreFlow name="PreFlow">
     <Request>
-      <Step>
-        <Name>SpikeArrest.RateLimit</Name>
-      </Step>
+        {{ spike_arrest_step }}
+        {{ verify_api_key_step }}
     </Request>
     <Response/>
   </PreFlow>
@@ -14,7 +13,7 @@
     <Response/>
   </PostFlow>
   <HTTPProxyConnection>
-    <BasePath>/tmf-api/productCatalogManagement/v4/</BasePath>
+    <BasePath>{{ base_path }}</BasePath>
   </HTTPProxyConnection>
   <RouteRule name="default">
     <TargetEndpoint>default</TargetEndpoint>

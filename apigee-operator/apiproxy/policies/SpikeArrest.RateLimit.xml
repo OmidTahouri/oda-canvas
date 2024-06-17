@@ -1,5 +1,5 @@
 <SpikeArrest continueOnError="false" enabled="true" name="SpikeArrest.RateLimit">
     <Identifier ref="{{ identifier }}" />
-    <Rate>{{ limit }}{{interval}}</Rate>
+    <Rate>{{ rate }}</Rate>
     <UseEffectiveCount>true</UseEffectiveCount>
 </SpikeArrest>
